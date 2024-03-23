@@ -1,7 +1,7 @@
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 import joblib, os
-
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -9,6 +9,13 @@ app = FastAPI()
 
 phish_model = open('phishing1.pkl', 'rb')
 phish_model_ls = joblib.load(phish_model)
+
+modelMail = joblib.load('spam_model.pkl')
+
+
+class InputData(BaseModel):
+    email: str
+
 
 # Placeholder database of URL categories (this would ideally come from an external service)
 url_categories = {
@@ -22,11 +29,8 @@ url_categories = {
     "amazon.com": "Shopping",
     "snapdeal.com": "Shopping",
 
-
     # Add more URLs and their respective categories as needed
 }
-
-
 
 
 # ML Aspect
@@ -46,7 +50,6 @@ async def predict(request: Request, features: str):
     # Simulating URL categorization (using the placeholder database)
     url_category = url_categories.get(features, "Uncategorized")
 
-
     X_predict = []
     X_predict.append(str(features))
     y_Predict = phish_model_ls.predict(X_predict)
@@ -56,6 +59,17 @@ async def predict(request: Request, features: str):
         result = "False"
 
     return features, result, risk_score, client_ip, timestamp, url_category
+
+    # ---- Email Spam -----
+
+
+@app.post('/predictmail')
+def predict_mail(data: InputData):
+    try:
+        prediction = modelMail.predict([data.email])  # Pass a list with a single email
+        return {"prediction": prediction.tolist()[0]}  # Assuming your model returns a single prediction
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == '__main__':
