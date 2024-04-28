@@ -19,3 +19,4 @@ websockets==12.0
 joblib==1.3.2
 scikit-learn==1.2.2
 nltk==3.8.1
+python-multipart
