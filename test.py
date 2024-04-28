@@ -1,7 +1,9 @@
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, File, UploadFile
 import joblib, os
 from pydantic import BaseModel
+from io import BytesIO
+import zipfile
 
 app = FastAPI()
 
@@ -71,6 +73,46 @@ def predict_mail(data: InputData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # ------- Malware -------
+
+
+def extract_manifest_info(apk_content):
+    try:
+        with zipfile.ZipFile(BytesIO(apk_content), 'r') as zip_ref:
+            manifest_data = zip_ref.read('AndroidManifest.xml')
+            return manifest_data.decode('latin-1')
+
+    except Exception as e:
+        print(f"Error extracting manifest info: {str(e)}")
+        raise
+
+def predict_malware(manifest_info):
+    try:
+        # Your logic to process the manifest_info and predict malware here
+        # This is a placeholder, replace it with your actual malware prediction logic
+        if "malicious_pattern" in manifest_info:
+            return "Malware found"
+        else:
+            return "Safe"
+
+    except Exception as e:
+        print(f"Error predicting malware: {str(e)}")
+        raise
+
+@app.post("/predict_malware/")
+async def predict_malware_endpoint(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        manifest_info = extract_manifest_info(content)
+        prediction = predict_malware(manifest_info)
+        return {"filename": file.filename, "prediction": prediction}
+
+    except Exception as e:
+        print(f"Error processing APK file: {str(e)}")
+        return {"error": str(e)}
+
+
+
 
 if __name__ == '__main__':
-    uvicorn.run(app, host="192.168.1.40", port=8000)
+    uvicorn.run(app, host="192.168.1.50", port=8000)
